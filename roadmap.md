@@ -19,4 +19,3 @@
 - [x] Redesign the merchant dashboard with a clean responsive sidebar and organized quick access
 - [x] Simplify add/edit product forms into colour groups with size quantities and one shared image upload
 - [x] Remove the earnings feature, dashboard card, page, navigation, and staff permission
-- [ ] Balance the storefront product image/details layout, replace the side panel, and label purchase actions "شراء الآن"

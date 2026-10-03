@@ -11,4 +11,3 @@
 
 - Product image uploads are manual-only: never auto-analyze images or auto-fill product fields, because merchants assign colours themselves.
 - Keep dashboard-specific visual tokens scoped under `.hub-dashboard` so the wider merchant hub retains its existing theme.
-- Present storefront product details as a centered responsive dialog, not a side drawer, so imagery and purchase information have equal visual weight.
