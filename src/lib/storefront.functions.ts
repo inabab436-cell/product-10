@@ -19,6 +19,8 @@ export interface StorefrontProduct {
   id: string; name: string; description: string | null;
   category: string | null; price: number | null; currency: string | null;
   images: string[]; variants: any[];
+  /** Photos per colour label (from product_images.color_id). */
+  colorImages?: Record<string, string[]>;
   /** Live offers that apply to THIS product right now (display only). */
   offers: ProductOffer[];
 }
@@ -82,7 +84,7 @@ export const getStorefront = createServerFn({ method: "GET" })
     const merchantId = String(merchant.id);
 
 
-    const [pR, polR, cR, shR, imgR] = await Promise.all([
+    const [pR, polR, cR, shR, imgR, colR] = await Promise.all([
       admin.from("products")
         .select("id,name,description,category,price,currency,images,variants")
         .eq("user_id", userId).order("category").order("name"),
@@ -95,9 +97,20 @@ export const getStorefront = createServerFn({ method: "GET" })
       admin.from("shipping_rates")
         .select("id,country,region,price,currency,eta,notes")
         .eq("user_id", userId).order("country", { nullsFirst: false }),
-      admin.from("product_images").select("product_id, url, position")
+      admin.from("product_images").select("product_id, url, position, color_id")
         .eq("user_id", userId).order("position", { ascending: true }),
+      admin.from("product_colors").select("id, label").eq("user_id", userId),
     ]);
+    const colorLabelById = new Map<string, string>();
+    for (const c of colR.data ?? []) colorLabelById.set(String((c as any).id), String((c as any).label ?? ""));
+    const pidToColorRaw = new Map<string, Array<[string, string]>>();
+    for (const r of imgR.data ?? []) {
+      const cid = (r as any).color_id; const u = (r as any).url;
+      const label = cid ? colorLabelById.get(String(cid)) : null;
+      if (!label || !u) continue;
+      const pid = String((r as any).product_id);
+      const arr = pidToColorRaw.get(pid) ?? []; arr.push([label, String(u)]); pidToColorRaw.set(pid, arr);
+    }
 
     const productRows = pR.data ?? [];
     const pidToImgUrls = new Map<string, string[]>();
@@ -153,6 +166,14 @@ export const getStorefront = createServerFn({ method: "GET" })
         try { return await createSignedUrl(u, 60 * 60); } catch { return null; }
       }));
       const images = Array.from(new Set(resolved.filter((u): u is string => !!u)));
+      const colorImages: Record<string, string[]> = {};
+      for (const [label, u] of pidToColorRaw.get(String(p.id)) ?? []) {
+        let url: string | null = u;
+        if (!/^https?:/i.test(u) && !/^data:/i.test(u)) {
+          try { url = await createSignedUrl(u, 60 * 60); } catch { url = null; }
+        }
+        if (url) (colorImages[label] ??= []).push(url);
+      }
       const canonical = variantsByPid.get(String(p.id)) ?? [];
       const variants = canonical.length > 0
         ? canonical
@@ -161,7 +182,7 @@ export const getStorefront = createServerFn({ method: "GET" })
         id: String(p.id), name: String(p.name ?? ""),
         description: p.description ?? null, category: p.category ?? null,
         price: p.price ?? null, currency: p.currency ?? null,
-        images, variants,
+        images, variants, colorImages,
         offers: offersFor(String(p.id)),
       };
     }));

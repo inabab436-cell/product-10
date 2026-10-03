@@ -428,7 +428,13 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
   const maxQty = selectedStock == null ? 99 : Math.max(selectedStock, 0);
   const clampedQty = Math.min(Math.max(qty, 1), Math.max(maxQty, 1));
 
-  const img = product.images[0];
+  const colorImgs = (color && product.colorImages?.[color]) || [];
+  const gallery = Array.from(new Set([...colorImgs, ...product.images]));
+  const img = gallery[0];
+  const [open, setOpen] = useState(false);
+  const [activeImg, setActiveImg] = useState<string | null>(null);
+  const shownImg = activeImg && gallery.includes(activeImg) ? activeImg : img;
+  const pickColor = (c: string) => { setColor(c); setQty(1); setActiveImg(product.colorImages?.[c]?.[0] ?? null); };
   const outOfStock = anyStockInfo && (inStock.length === 0 || (selectedStock ?? 0) <= 0);
   const alreadyInCart = cart.lines.some(
     (l) =>
@@ -453,13 +459,13 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
       price: unitPrice, currency: product.currency, image: img ?? null,
       color, size: effectiveSize, quantity: clampedQty,
     });
-    toast.success("تمت الإضافة إلى السلة");
+    showAddedToast(product.name, img ?? null);
   };
-  const img2 = product.images[1];
+  const img2 = gallery[1];
   const sale = Boolean(plan?.qualifies && plan.discountNow > 0);
   return (
     <article className="group flex flex-col">
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-secondary">
+      <div className="relative aspect-[3/4] w-full cursor-pointer overflow-hidden bg-secondary" onClick={() => setOpen(true)}>
         {img ? (
           <>
             <img src={img} alt={product.name} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-[1.04]" onError={(e) => ((e.target as HTMLImageElement).style.display = "none")} />
@@ -490,7 +496,7 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
           <button
             type="button"
             disabled={alreadyInCart}
-            onClick={addToCart}
+            onClick={(e) => { e.stopPropagation(); addToCart(); }}
             className="store-label absolute inset-x-2 bottom-2 h-11 bg-background/95 text-foreground opacity-100 transition hover:bg-primary hover:text-primary-foreground disabled:opacity-80 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
           >
             {alreadyInCart ? "في السلة ✓" : "أضف إلى السلة +"}
@@ -500,7 +506,7 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
 
       <div className="flex flex-1 flex-col gap-2 pt-3">
         {product.category && <span className="store-label text-muted-foreground">{product.category}</span>}
-        <h3 className="text-sm font-medium leading-snug sm:text-[15px]">{product.name}</h3>
+        <button type="button" onClick={() => setOpen(true)} className="text-right text-sm font-medium leading-snug hover:underline underline-offset-4 sm:text-[15px]">{product.name}</button>
         {unitPrice != null && (
           <div className="flex items-baseline gap-2 text-sm">
             <span className={`font-semibold ${sale ? "text-destructive" : ""}`}>
@@ -513,14 +519,7 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
         {availableColors.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {availableColors.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => { setColor(c); setQty(1); }}
-                className={`border px-2 py-0.5 text-[11px] transition ${color === c ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}
-              >
-                {c}
-              </button>
+              <ColorSwatch key={c} label={c} image={product.colorImages?.[c]?.[0] ?? null} active={color === c} onClick={() => pickColor(c)} small />
             ))}
           </div>
         )}
@@ -566,8 +565,109 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
           </div>
         )}
       </div>
+      {open && (
+        <div className="store fixed inset-0 z-50 flex bg-foreground/40 backdrop-blur-sm" dir="rtl" onClick={() => setOpen(false)}>
+          <div className="mr-auto flex h-full w-full max-w-lg flex-col overflow-y-auto bg-background shadow-2xl animate-in slide-in-from-left duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b px-5 py-4">
+              <span className="store-label">تفاصيل المنتج</span>
+              <button onClick={() => setOpen(false)} aria-label="إغلاق" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
+            </div>
+            <div className="relative aspect-[3/4] w-full bg-secondary">
+              {shownImg ? <img src={shownImg} alt={product.name} className="absolute inset-0 h-full w-full object-cover" /> : (
+                <div className="grid h-full place-items-center"><ShoppingBag className="h-10 w-10 text-muted-foreground" strokeWidth={1} /></div>
+              )}
+            </div>
+            {gallery.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto px-5 pt-3">
+                {gallery.map((g) => (
+                  <button key={g} type="button" onClick={() => setActiveImg(g)} className={`h-20 w-16 shrink-0 overflow-hidden border-2 transition ${shownImg === g ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                    <img src={g} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex flex-col gap-4 p-5">
+              {product.category && <span className="store-label text-muted-foreground">{product.category}</span>}
+              <h2 className="store-display text-3xl leading-tight">{product.name}</h2>
+              {unitPrice != null && (
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-xl font-semibold ${sale ? "text-destructive" : ""}`}>{sale ? plan!.unitPriceNow : unitPrice} {cur}</span>
+                  {sale && <span className="text-sm text-muted-foreground line-through">{unitPrice} {cur}</span>}
+                </div>
+              )}
+              {product.description && <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">{product.description}</p>}
+              {availableColors.length > 0 && (
+                <div>
+                  <p className="store-label mb-2">اللون: <span className="text-muted-foreground">{color}</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    {availableColors.map((c) => (
+                      <ColorSwatch key={c} label={c} image={product.colorImages?.[c]?.[0] ?? null} active={color === c} onClick={() => pickColor(c)} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {sizesForColor.length > 0 && (
+                <div>
+                  <p className="store-label mb-2">المقاس</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sizesForColor.map((s) => (
+                      <button key={s} type="button" onClick={() => { setSize(s); setQty(1); }}
+                        className={`grid h-10 min-w-10 place-items-center border px-2 text-xs font-semibold transition ${effectiveSize === s ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}>{s}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {plan && <ProductOfferBox plan={plan} currency={cur} quantity={clampedQty} onPickQty={(n) => setQty(n)} />}
+              {outOfStock ? (
+                <span className="store-label bg-muted px-3 py-3 text-center">نفدت الكمية</span>
+              ) : (
+                <div className="flex items-stretch gap-2">
+                  <div className="flex h-12 items-center border border-border">
+                    <button type="button" aria-label="زيادة" className="h-full w-10 hover:bg-muted" onClick={() => setQty(Math.min(clampedQty + 1, maxQty))}>+</button>
+                    <span className="w-8 text-center">{clampedQty}</span>
+                    <button type="button" aria-label="نقص" className="h-full w-10 hover:bg-muted" onClick={() => setQty(Math.max(clampedQty - 1, 1))}>−</button>
+                  </div>
+                  <button type="button" disabled={alreadyInCart} onClick={addToCart}
+                    className="store-label h-12 flex-1 bg-primary text-primary-foreground transition hover:bg-primary/85 disabled:bg-muted disabled:text-muted-foreground">
+                    {alreadyInCart ? "في السلة ✓" : "شراء الآن"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
+}
+
+function ColorSwatch({ label, image, active, onClick, small }: { label: string; image: string | null; active: boolean; onClick: () => void; small?: boolean }) {
+  if (!image) {
+    return (
+      <button type="button" onClick={onClick}
+        className={`border px-2 py-0.5 transition ${small ? "text-[11px]" : "h-10 px-3 text-xs"} ${active ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-primary"}`}>
+        {label}
+      </button>
+    );
+  }
+  return (
+    <button type="button" onClick={onClick} title={label} aria-label={label}
+      className={`overflow-hidden border-2 transition ${small ? "h-9 w-7" : "h-16 w-12"} ${active ? "border-primary" : "border-border opacity-80 hover:opacity-100"}`}>
+      <img src={image} alt={label} className="h-full w-full object-cover" />
+    </button>
+  );
+}
+
+function showAddedToast(name: string, image: string | null) {
+  toast.custom(() => (
+    <div dir="rtl" className="store flex w-[340px] items-center gap-3 border border-border bg-background p-3 text-foreground shadow-2xl">
+      {image ? <img src={image} alt="" className="h-14 w-11 shrink-0 object-cover" /> : <ShoppingBag className="h-6 w-6 shrink-0" strokeWidth={1.5} />}
+      <div className="min-w-0 flex-1">
+        <p className="store-label">تمت الإضافة للسلة ✓</p>
+        <p className="truncate text-xs text-muted-foreground">{name}</p>
+      </div>
+    </div>
+  ), { duration: 2500 });
 }
 
 
