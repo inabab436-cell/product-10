@@ -499,7 +499,7 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
             onClick={(e) => { e.stopPropagation(); addToCart(); }}
             className="store-label absolute inset-x-2 bottom-2 h-11 bg-background/95 text-foreground opacity-100 transition hover:bg-primary hover:text-primary-foreground disabled:opacity-80 sm:translate-y-2 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100"
           >
-            {alreadyInCart ? "في السلة ✓" : "أضف إلى السلة +"}
+            {alreadyInCart ? "في السلة ✓" : "شراء الآن"}
           </button>
         )}
       </div>
@@ -560,33 +560,36 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
               onClick={addToCart}
               className="store-label h-10 flex-1 bg-primary text-primary-foreground transition hover:bg-primary/85 disabled:bg-muted disabled:text-muted-foreground"
             >
-              {alreadyInCart ? "في السلة" : "أضف"}
+              {alreadyInCart ? "في السلة ✓" : "شراء الآن"}
             </button>
           </div>
         )}
       </div>
       {open && (
-        <div className="store fixed inset-0 z-50 flex bg-foreground/40 backdrop-blur-sm" dir="rtl" onClick={() => setOpen(false)}>
-          <div className="mr-auto flex h-full w-full max-w-lg flex-col overflow-y-auto bg-background shadow-2xl animate-in slide-in-from-left duration-300" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b px-5 py-4">
-              <span className="store-label">تفاصيل المنتج</span>
-              <button onClick={() => setOpen(false)} aria-label="إغلاق" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
-            </div>
-            <div className="relative aspect-[3/4] w-full bg-secondary">
-              {shownImg ? <img src={shownImg} alt={product.name} className="absolute inset-0 h-full w-full object-cover" /> : (
-                <div className="grid h-full place-items-center"><ShoppingBag className="h-10 w-10 text-muted-foreground" strokeWidth={1} /></div>
+        <div className="store fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-foreground/50 p-3 backdrop-blur-sm sm:p-6" dir="rtl" onClick={() => setOpen(false)}>
+          <div className="my-auto grid max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl overflow-hidden bg-background shadow-2xl animate-in fade-in zoom-in-95 duration-200 sm:max-h-[calc(100dvh-3rem)] md:grid-cols-2" onClick={(e) => e.stopPropagation()}>
+            <div className="relative flex min-h-0 flex-col bg-secondary md:h-[min(760px,calc(100dvh-3rem))]">
+              <div className="relative aspect-square min-h-0 flex-1 md:aspect-auto">
+                {shownImg ? <img src={shownImg} alt={product.name} className="absolute inset-0 h-full w-full object-contain" /> : (
+                  <div className="grid h-full place-items-center"><ShoppingBag className="h-10 w-10 text-muted-foreground" strokeWidth={1} /></div>
+                )}
+              </div>
+              {gallery.length > 1 && (
+                <div className="flex shrink-0 gap-2 overflow-x-auto border-t border-border bg-background px-4 py-3">
+                  {gallery.map((g) => (
+                    <button key={g} type="button" onClick={() => setActiveImg(g)} className={`aspect-square h-16 shrink-0 overflow-hidden border-2 bg-secondary transition ${shownImg === g ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
+                      <img src={g} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
-            {gallery.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto px-5 pt-3">
-                {gallery.map((g) => (
-                  <button key={g} type="button" onClick={() => setActiveImg(g)} className={`h-20 w-16 shrink-0 overflow-hidden border-2 transition ${shownImg === g ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}>
-                    <img src={g} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
+            <div className="flex min-h-0 flex-col md:h-[min(760px,calc(100dvh-3rem))]">
+              <div className="flex shrink-0 items-center justify-between border-b px-5 py-4">
+              <span className="store-label">تفاصيل المنتج</span>
+              <button onClick={() => setOpen(false)} aria-label="إغلاق" className="rounded p-1 hover:bg-muted"><X className="h-4 w-4" /></button>
               </div>
-            )}
-            <div className="flex flex-col gap-4 p-5">
+              <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5 sm:p-7">
               {product.category && <span className="store-label text-muted-foreground">{product.category}</span>}
               <h2 className="store-display text-3xl leading-tight">{product.name}</h2>
               {unitPrice != null && (
@@ -633,6 +636,7 @@ function ProductCard({ product }: { product: StorefrontData["products"][number] 
                   </button>
                 </div>
               )}
+              </div>
             </div>
           </div>
         </div>
